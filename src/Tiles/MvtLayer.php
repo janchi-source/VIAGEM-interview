@@ -35,13 +35,13 @@ final class MvtLayer
                 $dx = $points[0][0] - $cursorX; $dy = $points[0][1] - $cursorY;
                 $geometry[] = self::zigzag($dx); $geometry[] = self::zigzag($dy);
                 $cursorX = $points[0][0]; $cursorY = $points[0][1];
-                $geometry[] = (count($points) - 1) | (2 << 3);
+                $geometry[] = 2 | ((count($points) - 1) << 3);
                 for ($i = 1; $i < count($points); $i++) {
                     $dx = $points[$i][0] - $cursorX; $dy = $points[$i][1] - $cursorY;
                     $geometry[] = self::zigzag($dx); $geometry[] = self::zigzag($dy);
                     $cursorX = $points[$i][0]; $cursorY = $points[$i][1];
                 }
-                $geometry[] = (1 | (7 << 3));
+                $geometry[] = 7 | (1 << 3);
             }
         }
         if ($geometry === []) return;

@@ -82,6 +82,13 @@ check(!isset(MvtDecoder::decode($tileZ9)['parcels']), 'na nízkom zoome nevytvá
 $tile = $tileBuilder->build(12, $tileX, $tileY);
 $tileDecoded = MvtDecoder::decode($tile);
 check(isset($tileDecoded['parcels']) && count($tileDecoded['parcels']) > 0, 'builder vytvorí parcelnú dlaždicu');
+$validCommands = true;
+foreach ($tileDecoded['parcels'] as $feature) {
+    $commands = implode('', array_column($feature['geometry'], 'command'));
+    $validCommands = $validCommands && preg_match('/^(127)+$/', $commands) === 1
+        && min(array_map(static fn (array $step): int => $step['command'] === 2 ? count($step['values']) : PHP_INT_MAX, $feature['geometry'])) >= 4;
+}
+check($validCommands, 'polygóny majú platné MVT príkazy MoveTo, LineTo, ClosePath');
 $tileZ15 = $tileBuilder->build(15, (int) floor(TileMath::lonToX(15.35, 15)), (int) floor(TileMath::latToY(50.43, 15)));
 check(isset(MvtDecoder::decode($tileZ15)['parcel_label']), 'builder vytvorí parcelné popisky na z15');
 $httpCacheDirectory = sys_get_temp_dir() . '/viagem-http-' . bin2hex(random_bytes(3));
