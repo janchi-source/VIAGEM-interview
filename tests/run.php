@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/bootstrap.php';
+require __DIR__ . '/MvtDecoder.php';
 
 function check(bool $condition, string $message): void
 {
@@ -19,6 +20,10 @@ use Viagem\Database;
 use Viagem\Geo\GeometryCodec;
 use Viagem\Import\Importer;
 use Viagem\Tiles\TileCache;
+use Viagem\Tiles\MvtLayer;
+use Viagem\Tiles\TileBuilder;
+use Viagem\Tiles\Geometry;
+use Viagem\Geo\TileMath;
 
 check(ParcelNumber::format(1234, 5, 0) === '1234/5', 'formatuje parcelu s pododdelením');
 check(ParcelNumber::format(56, null, 1) === 'st. 56', 'formatuje stavebnú parcelu');
@@ -59,6 +64,25 @@ $cache->put(1, 2, 3, 'pbf');
 check($cache->get(1, 2, 3) === 'pbf', 'číta cache dlaždice');
 $cache->clear();
 check($cache->get(1, 2, 3) === null, 'čistí cache dlaždíc');
+$mvtLayer = new MvtLayer('test');
+$mvtLayer->addPolygon(5000000000, [[[0, 0, 100, 0, 100, 100, 0, 100]]], ['druh' => 'orná pôda']);
+$decoded = MvtDecoder::decode(\Viagem\Tiles\Protobuf::bytes(3, $mvtLayer->encode()));
+check($decoded['test'][0]['id'] === 5000000000, 'MVT zachová 64-bitové ID');
+check(count($decoded['test']) === 1, 'MVT dekóduje počet prvkov');
+check(($decoded['test'][0]['properties']['druh'] ?? null) === 'orná pôda', 'MVT zachová atribúty');
+check(count(Geometry::clipRing([-10, 10, 100, 10, 100, 100, -10, 10], 0, 0, 50, 50)) >= 6, 'oreže prstenec na dlaždicu');
+$simplified = Geometry::quantizeAndSimplify([0, 0, 1, 0, 2, 0, 3, 0, 3, 3, 0, 0]);
+check(count($simplified) >= 6, 'zjednoduší prstenec Douglas-Peuckerom');
+$tileX = (int) floor(TileMath::lonToX(15.35, 12));
+$tileY = (int) floor(TileMath::latToY(50.43, 12));
+$tileBuilder = new TileBuilder($connection);
+$tileZ9 = $tileBuilder->build(9, (int) floor(TileMath::lonToX(15.35, 9)), (int) floor(TileMath::latToY(50.43, 9)));
+check(!isset(MvtDecoder::decode($tileZ9)['parcels']), 'na nízkom zoome nevytvára parcelnú vrstvu');
+$tile = $tileBuilder->build(12, $tileX, $tileY);
+$tileDecoded = MvtDecoder::decode($tile);
+check(isset($tileDecoded['parcels']) && count($tileDecoded['parcels']) > 0, 'builder vytvorí parcelnú dlaždicu');
+$tileZ15 = $tileBuilder->build(15, (int) floor(TileMath::lonToX(15.35, 15)), (int) floor(TileMath::latToY(50.43, 15)));
+check(isset(MvtDecoder::decode($tileZ15)['parcel_label']), 'builder vytvorí parcelné popisky na z15');
 unlink($fixture);
 unlink($database);
 
