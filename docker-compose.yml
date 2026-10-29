@@ -1,0 +1,30 @@
+services:
+  database:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: parcel_map
+      POSTGRES_USER: parcel_map
+      POSTGRES_PASSWORD: parcel_map
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    depends_on:
+      - database
+    environment:
+      DATABASE_URL: "pgsql:host=database;port=5432;dbname=parcel_map"
+      DATABASE_USER: parcel_map
+      DATABASE_PASSWORD: parcel_map
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+
+volumes:
+  postgres_data:
