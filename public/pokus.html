@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pokus – parcely v záběru</title>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+  <style>
+    html, body, #map { height: 100%; margin: 0; }
+    #stats { position: absolute; z-index: 1; top: 10px; left: 10px; padding: 8px 10px; background: #fff; font: 14px sans-serif; box-shadow: 0 1px 4px #888; }
+  </style>
+</head>
+<body>
+  <div id="stats">Načítavam…</div>
+  <div id="map"></div>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script>
+    const stats = document.getElementById('stats');
+    const map = new maplibregl.Map({
+      container: 'map',
+      center: [15.35, 50.43],
+      zoom: 12,
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors'
+          },
+          parcels: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }
+        },
+        layers: [
+          { id: 'osm', type: 'raster', source: 'osm' },
+          { id: 'parcels-fill', type: 'fill', source: 'parcels', paint: { 'fill-color': '#2d8a55', 'fill-opacity': 0.18 } },
+          { id: 'parcels-line', type: 'line', source: 'parcels', paint: { 'line-color': '#17633a', 'line-width': 1 } }
+        ]
+      }
+    });
+    async function loadParcels() {
+      const bounds = map.getBounds();
+      const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const started = performance.now();
+      const response = await fetch('pokus.php?bbox=' + bbox.join(','));
+      const payload = await response.clone().blob();
+      const bytes = payload.size;
+      const data = await response.json();
+      map.getSource('parcels').setData(data);
+      const elapsed = Math.round(performance.now() - started);
+      const mb = (bytes / 1024 / 1024).toFixed(2);
+      stats.textContent = `${data.features.length} parciel · ${mb} MB · ${elapsed} ms`;
+    }
+    map.on('load', loadParcels);
+    map.on('moveend', loadParcels);
+  </script>
+</body>
+</html>
