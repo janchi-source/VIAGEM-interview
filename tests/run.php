@@ -24,6 +24,7 @@ use Viagem\Tiles\MvtLayer;
 use Viagem\Tiles\TileBuilder;
 use Viagem\Tiles\Geometry;
 use Viagem\Geo\TileMath;
+use Viagem\Http\App;
 
 check(ParcelNumber::format(1234, 5, 0) === '1234/5', 'formatuje parcelu s pododdelením');
 check(ParcelNumber::format(56, null, 1) === 'st. 56', 'formatuje stavebnú parcelu');
@@ -83,6 +84,17 @@ $tileDecoded = MvtDecoder::decode($tile);
 check(isset($tileDecoded['parcels']) && count($tileDecoded['parcels']) > 0, 'builder vytvorí parcelnú dlaždicu');
 $tileZ15 = $tileBuilder->build(15, (int) floor(TileMath::lonToX(15.35, 15)), (int) floor(TileMath::latToY(50.43, 15)));
 check(isset(MvtDecoder::decode($tileZ15)['parcel_label']), 'builder vytvorí parcelné popisky na z15');
+$httpCacheDirectory = sys_get_temp_dir() . '/viagem-http-' . bin2hex(random_bytes(3));
+$app = new App($connection, new TileCache($httpCacheDirectory));
+check($app->handle('GET', '/api/parcel/P1')->status === 200, 'App vráti parcelu');
+check($app->handle('GET', '/api/parcel/unknown')->status === 404, 'App vráti 404 pre neznámu parcelu');
+check($app->handle('GET', '/api/parcels/search', ['text' => '101'])->status === 200, 'App vyhľadá parcelu');
+check($app->handle('GET', '/api/parcels/search')->status === 400, 'App odmietne neúplné vyhľadávanie');
+check($app->handle('POST', '/api/stats')->status === 405, 'App odmietne inú HTTP metódu');
+check($app->handle('GET', '/api/nope')->status === 404, 'App vráti 404 pre neznámu cestu');
+$cachedTile = $app->handle('GET', '/tiles/12/' . $tileX . '/' . $tileY . '.pbf')->body;
+check($cachedTile !== '' && is_file($httpCacheDirectory . '/12/' . $tileX . '/' . $tileY . '.pbf'), 'App uloží dlaždicu do cache');
+(new TileCache($httpCacheDirectory))->clear();
 unlink($fixture);
 unlink($database);
 

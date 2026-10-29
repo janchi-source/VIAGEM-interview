@@ -4,26 +4,19 @@ declare(strict_types=1);
 
 $requestedPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 if (is_string($requestedPath)) {
+    if ($requestedPath === '/') $requestedPath = '/index.html';
     $file = __DIR__ . $requestedPath;
     if (is_file($file)) {
         return false;
     }
-    if (preg_match('#^/tiles/(\\d+)/(\\d+)/(\\d+)\\.pbf$#', $requestedPath, $matches) === 1) {
-        require dirname(__DIR__) . '/bootstrap.php';
-        $cache = new \Viagem\Tiles\TileCache((string) $config['tiles_path']);
-        $z = (int) $matches[1]; $x = (int) $matches[2]; $y = (int) $matches[3];
-        $tile = $cache->get($z, $x, $y);
-        if ($tile === null) {
-            $database = \Viagem\Database::connect((string) $config['db_path'], true);
-            $tile = (new \Viagem\Tiles\TileBuilder($database))->build($z, $x, $y);
-            $cache->put($z, $x, $y, $tile);
-        }
-        header('Content-Type: application/vnd.mapbox-vector-tile');
-        header('Cache-Control: public, max-age=86400');
-        echo $tile;
-        return;
-    }
 }
 
-header('Content-Type: text/plain; charset=utf-8');
-echo 'OK';
+require dirname(__DIR__) . '/bootstrap.php';
+try {
+    $database = \Viagem\Database::connect((string) $config['db_path'], true);
+    $app = new \Viagem\Http\App($database, new \Viagem\Tiles\TileCache((string) $config['tiles_path']));
+    $app->handle($_SERVER['REQUEST_METHOD'] ?? 'GET', is_string($requestedPath) ? $requestedPath : '/', $_GET)->send();
+} catch (\Throwable $error) {
+    error_log($error->__toString());
+    \Viagem\Http\Response::error('Služba je dočasne nedostupná.', 503)->send();
+}
