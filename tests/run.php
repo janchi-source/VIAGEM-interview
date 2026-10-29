@@ -14,6 +14,7 @@ function check(bool $condition, string $message): void
 
 use Viagem\Domain\ParcelNumber;
 use Viagem\Geo\Krovak;
+use Viagem\Import\GmlGeometryParser;
 
 check(ParcelNumber::format(1234, 5, 0) === '1234/5', 'formatuje parcelu s pododdelením');
 check(ParcelNumber::format(56, null, 1) === 'st. 56', 'formatuje stavebnú parcelu');
@@ -28,3 +29,9 @@ check(ParcelNumber::parse('123/4')['pododdeleni'] === 4, 'parsuje pododdelenie')
 [$longitude, $latitude] = Krovak::toWgs84(-740000.0, -1040000.0);
 check(abs($longitude - 14.4544325) < 0.00001, 'prevádza Křovákovú dĺžku');
 check(abs($latitude - 50.1177416) < 0.00001, 'prevádza Křovákovú šírku');
+
+$document = new DOMDocument();
+$document->loadXML('<gml:Polygon xmlns:gml="http://www.opengis.net/gml/3.2"><gml:exterior><gml:LinearRing><gml:posList>0 0 1 0 1 1 0 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon>');
+check(count(GmlGeometryParser::parseMultiPolygon($document->documentElement)) === 1, 'parsuje Polygon');
+
+echo "Všetky testy prešli.\n";
