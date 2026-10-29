@@ -35,7 +35,8 @@ final class GmlGeometryParser
     /** @return array{0: float, 1: float}|null */
     public static function parsePoint(DOMElement $element): ?array
     {
-        foreach (self::descendants($element) as $node) {
+        $nodes = self::localName($element) === 'Point' ? [$element] : self::descendants($element);
+        foreach ($nodes as $node) {
             if (self::localName($node) !== 'Point') {
                 continue;
             }
