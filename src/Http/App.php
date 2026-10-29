@@ -36,15 +36,15 @@ final class App
                 }
                 return Response::tile($tile);
             }
-            if (preg_match('#^/api/parcel/([^/]+)$#', $path, $matches) === 1) {
-                $parcel = $this->parcels->find(rawurldecode($matches[1]));
-                return $parcel === null ? Response::error('Parcela nebola nájdená.', 404) : Response::json($parcel);
-            }
             if ($path === '/api/parcels/search' || $path === '/api/search') {
                 $text = $query['text'] ?? $query['q'] ?? null;
                 if (!is_string($text) || trim($text) === '') return Response::error('Chýba číslo parcely.', 400);
                 $ku = $this->optionalInt($query['ku'] ?? null, 'katastrálne územie');
                 return Response::json(['items' => $this->parcels->search($ku, $text)]);
+            }
+            if (preg_match('#^/api/parcels?/([^/]+)$#', $path, $matches) === 1) {
+                $parcel = $this->parcels->find(rawurldecode($matches[1]));
+                return $parcel === null ? Response::error('Parcela nebola nájdená.', 404) : Response::json($parcel);
             }
             if ($path === '/api/katastralni-uzemi') return Response::json(['items' => $this->parcels->listKatastralniUzemi()]);
             if ($path === '/api/stats') return Response::json($this->parcels->stats());

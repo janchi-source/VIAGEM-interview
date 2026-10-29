@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interaktivní mapa parcel okresu Jičín">
+  <title>Parcely okresu Jičín</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="sidebar" aria-label="Ovládání mapy">
+      <header class="brand">
+        <h1>Parcely okresu Jičín</h1>
+        <p>Interaktivní katastrální mapa</p>
+      </header>
+      <section class="panel" aria-labelledby="stats-title">
+        <h2 id="stats-title">Přehled</h2>
+        <dl class="stats">
+          <div><dt>Parcely</dt><dd id="stat-parcels">–</dd></div>
+          <div><dt>Katastrální území</dt><dd id="stat-ku">–</dd></div>
+          <div><dt>Obce</dt><dd id="stat-municipalities">–</dd></div>
+        </dl>
+      </section>
+      <section class="panel" aria-labelledby="search-title">
+        <h2 id="search-title">Vyhledávání</h2>
+        <form id="search-form">
+          <label for="ku-select">Katastrální území</label>
+          <select id="ku-select"><option value="">Všechna území</option></select>
+          <label for="parcel-number">Číslo parcely</label>
+          <div class="search-row">
+            <input id="parcel-number" type="search" placeholder="např. 123/4" autocomplete="off">
+            <button type="submit">Hledat</button>
+          </div>
+          <p id="search-message" class="message" role="status"></p>
+          <ul id="search-results" class="search-results"></ul>
+        </form>
+      </section>
+      <section class="panel detail-panel" aria-labelledby="detail-title">
+        <div class="panel-heading">
+          <h2 id="detail-title">Detail parcely</h2>
+          <button id="close-detail" class="icon-button" type="button" aria-label="Zavřít detail" hidden>×</button>
+        </div>
+        <p id="detail-empty" class="muted">Klikněte na parcelu v mapě.</p>
+        <div id="parcel-detail" hidden>
+          <p class="parcel-title" id="detail-number"></p>
+          <p class="muted" id="detail-location"></p>
+          <dl class="detail-list">
+            <div><dt>Druh pozemku</dt><dd id="detail-type"></dd></div>
+            <div><dt>Výměra</dt><dd id="detail-area"></dd></div>
+            <div><dt>Využití</dt><dd id="detail-use"></dd></div>
+          </dl>
+          <div class="detail-actions">
+            <button id="export-geojson" type="button">Export GeoJSON</button>
+            <a id="cuzk-link" target="_blank" rel="noopener">Nahlížení do KN ↗</a>
+          </div>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="legend-title">
+        <h2 id="legend-title">Legenda a vrstvy</h2>
+        <fieldset id="land-filters"><legend>Druh pozemku</legend></fieldset>
+        <fieldset><legend>Podklad</legend>
+          <label class="radio-label"><input type="radio" name="base" value="osm" checked> OpenStreetMap</label>
+          <label class="radio-label"><input type="radio" name="base" value="ortho"> Ortofoto ČÚZK</label>
+          <label class="radio-label"><input type="radio" name="base" value="none"> Žádný</label>
+        </fieldset>
+        <label class="switch-label"><input id="cadastral-wms" type="checkbox"> Katastrální mapa ČÚZK (od zoomu 14)</label>
+      </section>
+    </aside>
+    <section class="map-area">
+      <div id="map" aria-label="Mapa parcel"></div>
+      <p id="zoom-hint" class="zoom-hint" hidden>Na tomto přiblížení jsou skryté malé parcely. Přibližte mapu pro jejich zobrazení.</p>
+      <div id="map-status" class="map-status" role="status">Načítám mapu…</div>
+    </section>
+  </main>
+  <script defer src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script defer src="/assets/app.js"></script>
+</body>
+</html>

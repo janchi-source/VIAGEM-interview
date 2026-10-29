@@ -87,6 +87,7 @@ check(isset(MvtDecoder::decode($tileZ15)['parcel_label']), 'builder vytvorí par
 $httpCacheDirectory = sys_get_temp_dir() . '/viagem-http-' . bin2hex(random_bytes(3));
 $app = new App($connection, new TileCache($httpCacheDirectory));
 check($app->handle('GET', '/api/parcel/P1')->status === 200, 'App vráti parcelu');
+check($app->handle('GET', '/api/parcels/P1')->status === 200, 'App vráti parcelu aj v množnom čísle');
 check($app->handle('GET', '/api/parcel/unknown')->status === 404, 'App vráti 404 pre neznámu parcelu');
 check($app->handle('GET', '/api/parcels/search', ['text' => '101'])->status === 200, 'App vyhľadá parcelu');
 check($app->handle('GET', '/api/parcels/search')->status === 400, 'App odmietne neúplné vyhľadávanie');

@@ -13,7 +13,7 @@ final class TileBuilder
     private const EXTENT = 4096;
     private const BUFFER = 64;
     private const MAX_ZOOM = 15;
-    private const MIN_PIXELS = [10 => 3.0, 11 => 2.5, 12 => 2.0, 13 => 1.0];
+    private const MIN_PIXELS = [10 => 0.0, 11 => 1.5, 12 => 1.0, 13 => 0.5];
 
     public function __construct(private readonly PDO $pdo)
     {

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 $requestedPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 if (is_string($requestedPath)) {
-    if ($requestedPath === '/') $requestedPath = '/index.html';
+    if ($requestedPath === '/') {
+        readfile(__DIR__ . '/index.html');
+        return true;
+    }
     $file = __DIR__ . $requestedPath;
     if (is_file($file)) {
         return false;
