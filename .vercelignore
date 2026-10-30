@@ -1,6 +1,9 @@
-data/vfr
+data
 public/tiles
+public/index.php
+public/pokus.php
 tests
 docker
 docker-compose.yml
 bin
+src

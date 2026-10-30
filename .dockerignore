@@ -1,0 +1,6 @@
+.git
+data/vfr
+public/tiles
+tests
+docker
+docker-compose.yml
