@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: viagem-parcel-map
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/stats
+    autoDeploy: true
