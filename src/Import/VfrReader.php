@@ -6,6 +6,7 @@ namespace Viagem\Import;
 
 use DOMDocument;
 use DOMElement;
+use Viagem\Geo\Krovak;
 use XMLReader;
 
 final class VfrReader
@@ -94,12 +95,76 @@ final class VfrReader
             $value = $this->value($node, $name);
             if ($value !== null) $record[$name] = is_numeric($value) ? (int) $value : $value;
         }
+        $this->applyVfrFields($node, $type, $record);
         $point = GmlGeometryParser::parsePoint($node);
-        if ($point !== null) $record['point'] = $point;
+        if ($point !== null) $record['point'] = $this->toWgs84Point($point);
         $geometry = GmlGeometryParser::parseMultiPolygon($node);
-        if ($geometry !== []) $record['geometry'] = $geometry;
-        $record['bpej'] = $this->children($node, 'BPEJ');
+        if ($geometry !== []) $record['geometry'] = array_map(fn (array $polygon): array => array_map($this->toWgs84Ring(...), $polygon), $geometry);
+        $record['bpej'] ??= $this->children($node, 'BPEJ');
         return $record;
+    }
+
+    /** Pole skutočného VFR: vlastný `Kod`, odkazy `<Obec><Kod>` a prípony `...Kod`/`...Parcely` v názvoch. */
+    private const OWN_CODE = ['Okres' => 'KodOkresu', 'Obec' => 'KodObce', 'CastObce' => 'KodCastObce', 'KatastralniUzemi' => 'KodKatastralnihoUzemi', 'Ulice' => 'KodUlice'];
+    private const PARENT_CODE = ['Okres' => 'KodOkresu', 'Obec' => 'KodObce', 'CastObce' => 'KodCastObce', 'KatastralniUzemi' => 'KodKatastralnihoUzemi'];
+    private const RENAMED = ['VymeraParcely' => 'Vymera', 'DruhCislovaniKod' => 'DruhCislovani', 'DruhPozemkuKod' => 'DruhPozemku', 'ZpusobVyuzitiKod' => 'ZpusobVyuziti', 'ZpusobyVyuzitiPozemku' => 'ZpusobVyuziti', 'PododdeleniCisla' => 'PoddeleniCisla'];
+    private const DIRECT = ['Nazev', 'KmenoveCislo', 'PoddeleniCisla', 'CisloDomovni', 'CisloOrientacni'];
+
+    /** @param array<string, mixed> $record */
+    private function applyVfrFields(DOMElement $node, string $type, array &$record): void
+    {
+        foreach ($node->childNodes as $child) {
+            if (!$child instanceof DOMElement) continue;
+            $name = $child->localName ?? $child->nodeName;
+            $text = trim($child->textContent);
+            if ($name === 'Kod' && isset(self::OWN_CODE[$type])) {
+                $record[self::OWN_CODE[$type]] = (int) $text;
+            } elseif (isset(self::PARENT_CODE[$name])) {
+                foreach ($child->childNodes as $grandchild) {
+                    if ($grandchild instanceof DOMElement && ($grandchild->localName ?? '') === 'Kod') $record[self::PARENT_CODE[$name]] = (int) trim($grandchild->textContent);
+                }
+            } elseif (isset(self::RENAMED[$name])) {
+                $record[self::RENAMED[$name]] = is_numeric($text) ? (int) $text : $text;
+            } elseif (in_array($name, self::DIRECT, true)) {
+                $record[$name] = is_numeric($text) && $name !== 'Nazev' ? (int) $text : $text;
+            } elseif ($name === 'PlatiOd') {
+                $record['PlatiOd'] = substr($text, 0, 10);
+            } elseif ($name === 'BonitovaneDily') {
+                foreach ($child->getElementsByTagName('BonitovanyDil') as $part) {
+                    $kod = $this->value($part, 'BonitovanaJednotkaKod');
+                    if ($kod === null || !is_numeric($kod)) continue;
+                    $area = $this->value($part, 'Vymera');
+                    $record['bpej'][] = ['kod' => (int) $kod, 'vymera' => is_numeric($area) ? (int) $area : null];
+                }
+            } elseif ($name === 'ZpusobyOchranyPozemku') {
+                foreach ($child->getElementsByTagName('ZpusobOchrany') as $item) {
+                    $kod = $this->value($item, 'Kod');
+                    if ($kod === null || !is_numeric($kod)) continue;
+                    $type = $this->value($item, 'TypOchranyKod');
+                    $record['ochrana'][] = ['kod' => (int) $kod, 'typ' => is_numeric($type) ? (int) $type : null];
+                }
+            } elseif ($name === 'CislaDomovni') {
+                $first = $this->value($child, 'CisloDomovni');
+                if ($first !== null && is_numeric($first)) $record['CisloDomovni'] = (int) $first;
+            } elseif ($name === 'IdentifikacniParcela') {
+                $record['IdentifikacniParcela'] = $this->value($child, 'Id') ?? $text;
+            }
+        }
+    }
+
+    /** VFR je v S-JTSK (EPSG:5514); hodnoty už v stupňoch (fixtures) sa nemenia. */
+    private function toWgs84Point(array $point): array
+    {
+        return abs($point[0]) <= 180.0 ? $point : Krovak::toWgs84($point[0], $point[1]);
+    }
+
+    /** @param list<float> $ring @return list<float> */
+    private function toWgs84Ring(array $ring): array
+    {
+        if ($ring === [] || abs($ring[0]) <= 180.0) return $ring;
+        $converted = [];
+        for ($i = 0; $i + 1 < count($ring); $i += 2) array_push($converted, ...Krovak::toWgs84($ring[$i], $ring[$i + 1]));
+        return $converted;
     }
 
     private function type(DOMElement $node): string

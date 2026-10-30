@@ -20,24 +20,34 @@ if (isset($options['obce'])) {
         if ($code !== '' && ctype_digit($code)) $requestedMunicipalities[] = (int) $code;
     }
 }
-if ($file === null) {
-    $downloader = new VfrDownloader((string) $config['cuzk_base_url'], (string) $config['vfr_path']);
-    $date ??= $downloader->latestDate();
-    $file = $downloader->download($date);
-}
-if (!is_file($file)) throw new RuntimeException('VFR súbor neexistuje: ' . $file);
-
 $databasePath = (string) $config['db_path'];
 $temporaryDatabase = $databasePath . '.tmp';
 if (is_file($temporaryDatabase) && !unlink($temporaryDatabase)) throw new RuntimeException('Nepodarilo sa odstrániť dočasnú DB.');
 $pdo = Database::connect($temporaryDatabase);
-$counts = (new Importer($pdo))->importFile($file, $requestedMunicipalities === [] ? null : $requestedMunicipalities);
+$importer = new Importer($pdo);
+$counts = [];
 $municipalities = $requestedMunicipalities;
-if ($municipalities === []) {
-    foreach ((new \Viagem\Import\VfrReader())->records($file, ['Obec']) as $record) {
-        if (($record['KodOkresu'] ?? null) === (int) $config['district_code'] && isset($record['KodObce'])) {
-            $municipalities[] = (int) $record['KodObce'];
+if ($file !== null) {
+    // Jeden lokálny VFR súbor (napr. OB_xxxxxx_UKSH alebo fixture).
+    if (!is_file($file)) throw new RuntimeException('VFR súbor neexistuje: ' . $file);
+    $counts = $importer->importFile($file, $requestedMunicipalities === [] ? null : $requestedMunicipalities);
+} else {
+    // ST_UKSG nesie len správnu štruktúru; parcely sú v súboroch OB_<kód obce>_UKSH.
+    $downloader = new VfrDownloader((string) $config['cuzk_base_url'], (string) $config['vfr_path']);
+    $date ??= $downloader->latestDate();
+    if ($municipalities === []) {
+        $structure = $downloader->download($date);
+        foreach ((new \Viagem\Import\VfrReader())->records($structure, ['Obec']) as $record) {
+            if (($record['KodOkresu'] ?? null) === (int) $config['district_code'] && isset($record['KodObce'])) $municipalities[] = (int) $record['KodObce'];
         }
+    }
+    $municipalities = array_values(array_unique($municipalities));
+    if ($municipalities === []) throw new RuntimeException('Okres ' . $config['district_code'] . ' nemá v ST_UKSG žiadne obce.');
+    foreach ($municipalities as $index => $code) {
+        $municipalityFile = $downloader->download($date, 'OB_' . $code . '_UKSH');
+        foreach ($importer->importFile($municipalityFile) as $type => $count) $counts[$type] = ($counts[$type] ?? 0) + $count;
+        unlink($municipalityFile);
+        fwrite(STDERR, sprintf("[%d/%d] obec %d, parcely spolu: %d\n", $index + 1, count($municipalities), $code, $counts['Parcela'] ?? 0));
     }
 }
 $municipalities = array_values(array_unique($municipalities));

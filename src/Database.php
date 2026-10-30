@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS parcel (
     id TEXT PRIMARY KEY, ku_kod INTEGER, kmenove_cislo INTEGER,
     pododdeleni INTEGER, druh_cislovani INTEGER, druh_pozemku TEXT,
     zpusob_vyuziti TEXT, vymera INTEGER, bpej TEXT NOT NULL DEFAULT '[]',
-    label_lon REAL, label_lat REAL, rtree_id INTEGER, geom BLOB
+    label_lon REAL, label_lat REAL, rtree_id INTEGER, geom BLOB,
+    ochrana TEXT NOT NULL DEFAULT '[]', plati_od TEXT
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS parcel_rtree USING rtree(
     id, min_lon, max_lon, min_lat, max_lat
@@ -60,6 +61,10 @@ SQL);
         $columns = array_column($pdo->query('PRAGMA table_info(parcel)')->fetchAll(), 'name');
         if (!in_array('rtree_id', $columns, true)) {
             $pdo->exec('ALTER TABLE parcel ADD COLUMN rtree_id INTEGER');
+        }
+        if (!in_array('ochrana', $columns, true)) {
+            $pdo->exec("ALTER TABLE parcel ADD COLUMN ochrana TEXT NOT NULL DEFAULT '[]'");
+            $pdo->exec('ALTER TABLE parcel ADD COLUMN plati_od TEXT');
         }
     }
 }

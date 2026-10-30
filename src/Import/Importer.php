@@ -53,7 +53,7 @@ final class Importer
             'cast' => $this->pdo->prepare('INSERT OR REPLACE INTO cast_obce (kod, obec_kod, nazev) VALUES (?, ?, ?)'),
             'ulice' => $this->pdo->prepare('INSERT OR REPLACE INTO ulice (kod, obec_kod, nazev) VALUES (?, ?, ?)'),
             'ku' => $this->pdo->prepare('INSERT OR REPLACE INTO ku (kod, nazev, obec_kod, min_lon, min_lat, max_lon, max_lat, label_lon, label_lat, parcel_count, geom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)'),
-            'parcel' => $this->pdo->prepare('INSERT OR REPLACE INTO parcel (id, ku_kod, kmenove_cislo, pododdeleni, druh_cislovani, druh_pozemku, zpusob_vyuziti, vymera, bpej, label_lon, label_lat, rtree_id, geom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
+            'parcel' => $this->pdo->prepare('INSERT OR REPLACE INTO parcel (id, ku_kod, kmenove_cislo, pododdeleni, druh_cislovani, druh_pozemku, zpusob_vyuziti, vymera, bpej, label_lon, label_lat, rtree_id, geom, ochrana, plati_od) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
             'rtree' => $this->pdo->prepare('INSERT OR REPLACE INTO parcel_rtree (id, min_lon, max_lon, min_lat, max_lat) VALUES (?, ?, ?, ?, ?)'),
             'building' => $this->pdo->prepare('INSERT OR REPLACE INTO stavebni_objekt (id, ku_kod, cislo_domovni, cislo_orientacni, identifikacni_parcela, label_lon, label_lat, geom) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
             'address' => $this->pdo->prepare('INSERT OR REPLACE INTO adresni_misto (id, obec_kod, ku_kod, cislo_domovni, cislo_orientacni, label_lon, label_lat) VALUES (?, ?, ?, ?, ?, ?, ?)'),
@@ -104,6 +104,7 @@ final class Importer
                 $this->text($record, ['DruhPozemku']), $this->text($record, ['ZpusobVyuziti']),
                 $this->integer($record, ['Vymera']), json_encode($record['bpej'] ?? [], JSON_THROW_ON_ERROR),
                 $point[0], $point[1], $rtreeId, $blob,
+                json_encode($record['ochrana'] ?? [], JSON_THROW_ON_ERROR), $this->text($record, ['PlatiOd']),
             ]);
             if ($bbox !== null) $statements['rtree']->execute([$rtreeId, $bbox['min_lon'], $bbox['max_lon'], $bbox['min_lat'], $bbox['max_lat']]);
             return;

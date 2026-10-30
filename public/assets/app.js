@@ -1,11 +1,12 @@
 (() => {
   'use strict';
 
+  // Kód druhu pozemku z VFR (v dlaždicích vlastnosť `druh`), popisek a barva.
   const landTypes = [
-    ['orná půda', 'Orná půda', '#e9c46a'], ['chmelnice', 'Chmelnice', '#b7d66b'], ['vinice', 'Vinice', '#c08497'],
-    ['zahrada', 'Zahrada', '#79b86a'], ['ovocný sad', 'Ovocný sad', '#8ccf8a'], ['trvalý travní porost', 'Trvalý travní porost', '#a8d08d'],
-    ['lesní pozemek', 'Lesní pozemek', '#4f9363'], ['vodní plocha', 'Vodní plocha', '#6baed6'],
-    ['zastavěná plocha a nádvoří', 'Zastavěná plocha a nádvoří', '#d98c70'], ['ostatní plocha', 'Ostatní plocha', '#b8b8b8']
+    ['2', 'Orná půda', '#e9c46a'], ['3', 'Chmelnice', '#b7d66b'], ['4', 'Vinice', '#a64d79'],
+    ['5', 'Zahrada', '#5fbf6a'], ['6', 'Ovocný sad', '#f28e2b'], ['7', 'Trvalý travní porost', '#b6e07a'],
+    ['10', 'Lesní pozemek', '#2e7d4f'], ['11', 'Vodní plocha', '#4aa3df'],
+    ['13', 'Zastavěná plocha a nádvoří', '#e0604f'], ['14', 'Ostatní plocha', '#9e9e9e']
   ];
   const byId = (id) => document.getElementById(id);
   const formatNumber = new Intl.NumberFormat('cs-CZ');
@@ -33,14 +34,16 @@
       glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
       sources: {
         osm: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, attribution: '© Esri, HERE, Garmin, OpenStreetMap contributors' },
-        parcels: { type: 'vector', tiles: ['/tiles/{z}/{x}/{y}.pbf'], minzoom: 8, maxzoom: 15 },
+        parcels: { type: 'vector', tiles: [`${location.origin}/tiles/{z}/{x}/{y}.pbf`], minzoom: 8, maxzoom: 15 },
         selected: { type: 'geojson', data: emptyFeatureCollection() }
       },
       layers: [
         { id: 'osm', type: 'raster', source: 'osm' },
         { id: 'ku-fill', type: 'fill', source: 'parcels', 'source-layer': 'ku', paint: { 'fill-color': '#78909c', 'fill-opacity': .04 } },
-        { id: 'parcels-fill', type: 'fill', source: 'parcels', 'source-layer': 'parcels', paint: { 'fill-color': ['match', ['get', 'druh'], ...landTypes.flatMap((item) => [item[0], item[2]]), '#b8b8b8'], 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], .55, .35] } },
-        { id: 'parcels-line', type: 'line', source: 'parcels', 'source-layer': 'parcels', paint: { 'line-color': '#173f29', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 2.5] } },
+        { id: 'parcels-fill', type: 'fill', source: 'parcels', 'source-layer': 'parcels', minzoom: 13, paint: { 'fill-color': ['match', ['get', 'druh'], ...landTypes.flatMap((item) => [item[0], item[2]]), '#b8b8b8'], 'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], .85, .6] } },
+        { id: 'parcels-line', type: 'line', source: 'parcels', 'source-layer': 'parcels', minzoom: 13, paint: { 'line-color': '#173f29', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, .3, 15, 1, 17, 2.2], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 13, .55, 15, .9] } },
+        { id: 'ku-line', type: 'line', source: 'parcels', 'source-layer': 'ku', paint: { 'line-color': '#37474f', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, .8, 12, 1.6, 16, 2.4], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 8, .85, 15, .6] } },
+        { id: 'ku-labels', type: 'symbol', source: 'parcels', 'source-layer': 'ku_label', minzoom: 9, maxzoom: 16, layout: { 'text-field': ['get', 'nazev'], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 9, 11, 12, 14, 15, 17], 'text-max-width': 8, 'text-padding': 6 }, paint: { 'text-color': '#16242e', 'text-halo-color': 'rgba(255,255,255,.92)', 'text-halo-width': 2 } },
         { id: 'parcel-labels', type: 'symbol', source: 'parcels', 'source-layer': 'parcel_label', minzoom: 15, layout: { 'text-field': ['get', 'cislo'], 'text-font': ['Noto Sans Regular'], 'text-size': 10 }, paint: { 'text-color': '#294936', 'text-halo-color': '#fff', 'text-halo-width': 1 } },
         { id: 'selected-fill', type: 'fill', source: 'selected', paint: { 'fill-color': '#ffd43b', 'fill-opacity': .12 } },
         { id: 'selected-line', type: 'line', source: 'selected', paint: { 'line-color': '#e5a900', 'line-width': 3 } }
@@ -113,7 +116,17 @@
       setText('detail-location', `${parcel.katastralni_uzemi.nazev} · ${parcel.obec}`);
       setText('detail-type', parcel.druh_pozemku.nazev || 'neuveden');
       setText('detail-area', `${formatNumber.format(parcel.vymera)} m²`);
-      setText('detail-use', parcel.zpusob_vyuziti.nazev || 'neuveden');
+      const codeOrName = (item) => item.nazev || (item.kod ? `kód ${item.kod}` : 'neuveden');
+      setText('detail-use', codeOrName(parcel.zpusob_vyuziti));
+      setText('detail-protection', parcel.ochrana && parcel.ochrana.length ? parcel.ochrana.map((item) => `kód ${item.kod}${item.typ ? ` (typ ${item.typ})` : ''}`).join(', ') : 'neuveden');
+      setText('detail-valid', parcel.plati_od ? new Date(parcel.plati_od).toLocaleDateString('cs-CZ') : 'neuvedeno');
+      const fillList = (listId, blockId, rows) => {
+        const list = byId(listId); list.replaceChildren();
+        rows.forEach((row) => { const li = document.createElement('li'); li.textContent = row; list.append(li); });
+        byId(blockId).hidden = rows.length === 0;
+      };
+      fillList('detail-bpej', 'detail-bpej-block', (parcel.bpej || []).map((item) => `${item.oznaceni} · ${item.vymera === null ? '?' : formatNumber.format(item.vymera)} m²${item.podil === null ? '' : ` (${item.podil} %)`}`));
+      fillList('detail-buildings', 'detail-buildings-block', (parcel.budovy || []).map((item) => `č. p. ${item.cislo_domovni ?? '–'}${item.cislo_orientacni ? `/${item.cislo_orientacni}` : ''}`));
       byId('cuzk-link').href = parcel.odkaz;
       map.getSource('selected').setData(parcel.geojson ? { type: 'Feature', id: parcel.id, properties: {}, geometry: parcel.geojson } : emptyFeatureCollection());
       history.replaceState(null, '', `?parcel=${encodeURIComponent(id)}${location.hash}`);

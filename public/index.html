@@ -50,7 +50,18 @@
             <div><dt>Druh pozemku</dt><dd id="detail-type"></dd></div>
             <div><dt>Výměra</dt><dd id="detail-area"></dd></div>
             <div><dt>Využití</dt><dd id="detail-use"></dd></div>
+            <div><dt>Ochrana</dt><dd id="detail-protection"></dd></div>
+            <div><dt>Platné od</dt><dd id="detail-valid"></dd></div>
           </dl>
+          <div id="detail-bpej-block" hidden>
+            <h3 class="detail-heading">Bonita půdy (BPEJ)</h3>
+            <ul id="detail-bpej" class="detail-items"></ul>
+            <p class="muted bpej-note">Kód X.XX.XX = klimatický region · hlavní půdní jednotka · sklonitost a expozice · skeletovitost a hloubka půdy.</p>
+          </div>
+          <div id="detail-buildings-block" hidden>
+            <h3 class="detail-heading">Budovy na parcele</h3>
+            <ul id="detail-buildings" class="detail-items"></ul>
+          </div>
           <div class="detail-actions">
             <button id="export-geojson" type="button">Export GeoJSON</button>
             <a id="cuzk-link" target="_blank" rel="noopener">Nahlížení do KN ↗</a>
@@ -70,7 +81,7 @@
     </aside>
     <section class="map-area">
       <div id="map" aria-label="Mapa parcel"></div>
-      <p id="zoom-hint" class="zoom-hint" hidden>Na tomto přiblížení jsou skryté malé parcely. Přibližte mapu pro jejich zobrazení.</p>
+      <p id="zoom-hint" class="zoom-hint" hidden>Parcely se zobrazí po přiblížení mapy, malé až od vyššího zoomu. Zatím jsou vidět katastrální území a jejich názvy.</p>
       <div id="map-status" class="map-status" role="status">Načítám mapu…</div>
     </section>
   </main>

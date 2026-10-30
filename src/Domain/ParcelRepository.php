@@ -16,6 +16,8 @@ final class ParcelRepository
     /** @return array<string, mixed>|null */
     public function find(string $id): ?array
     {
+        // Dlaždice nesú ako ID parcely číselné rtree_id, API detail aj textové VFR ID.
+        $column = ctype_digit($id) ? 'rtree_id' : 'id';
         $statement = $this->pdo->prepare(
             'SELECT p.*, k.nazev AS ku_nazev, o.nazev AS obec_nazev,
                     r.min_lon, r.min_lat, r.max_lon, r.max_lat
@@ -23,7 +25,7 @@ final class ParcelRepository
              LEFT JOIN ku k ON k.kod = p.ku_kod
              LEFT JOIN obec o ON o.kod = k.obec_kod
              LEFT JOIN parcel_rtree r ON r.id = p.rtree_id
-             WHERE p.id = :id'
+             WHERE p.' . $column . ' = :id'
         );
         $statement->execute(['id' => $id]);
         $row = $statement->fetch();
@@ -37,10 +39,12 @@ final class ParcelRepository
             'druh_pozemku' => ['kod' => $row['druh_pozemku'], 'nazev' => Codebook::landType($row['druh_pozemku'])],
             'zpusob_vyuziti' => ['kod' => $row['zpusob_vyuziti'], 'nazev' => Codebook::landUse($row['zpusob_vyuziti'])],
             'vymera' => $row['vymera'],
-            'bpej' => json_decode((string) $row['bpej'], true, 512, JSON_THROW_ON_ERROR),
+            'bpej' => self::bpej(json_decode((string) $row['bpej'], true, 512, JSON_THROW_ON_ERROR), (int) $row['vymera']),
+            'ochrana' => json_decode((string) ($row['ochrana'] ?? '[]'), true, 512, JSON_THROW_ON_ERROR),
+            'plati_od' => $row['plati_od'] ?? null,
             'bbox' => ['min_lon' => $row['min_lon'], 'min_lat' => $row['min_lat'], 'max_lon' => $row['max_lon'], 'max_lat' => $row['max_lat']],
-            'budovy' => $this->buildings((int) $row['ku_kod'], $id),
-            'odkaz' => 'https://nahlizenidokn.cuzk.cz/ZobrazObjekt.aspx?typ=parcela&id=' . rawurlencode($id),
+            'budovy' => $this->buildings((int) $row['ku_kod'], (string) $row['id']),
+            'odkaz' => 'https://nahlizenidokn.cuzk.gov.cz/ZobrazObjekt.aspx?typ=parcela&id=' . rawurlencode(preg_replace('/^PA\./', '', (string) $row['id'])),
             'geojson' => $row['geom'] === null ? null : json_decode(GeometryCodec::toGeoJson((string) $row['geom']), true, 512, JSON_THROW_ON_ERROR),
         ];
         return $result;
@@ -91,11 +95,39 @@ final class ParcelRepository
         ];
     }
 
+    /**
+     * BPEJ je päťmiestny kód X.XX.XX: klimatický región, hlavná pôdna jednotka,
+     * sklonitosť s expozíciou a skeletovitosť s hĺbkou pôdy.
+     *
+     * @param list<array<string, mixed>> $items @return list<array<string, mixed>>
+     */
+    private static function bpej(array $items, int $parcelArea): array
+    {
+        $result = [];
+        foreach ($items as $item) {
+            if (!isset($item['kod']) || !is_int($item['kod'])) continue;
+            $code = str_pad((string) $item['kod'], 5, '0', STR_PAD_LEFT);
+            $area = $item['vymera'] ?? null;
+            $result[] = [
+                'kod' => $item['kod'],
+                'oznaceni' => $code[0] . '.' . substr($code, 1, 2) . '.' . substr($code, 3, 2),
+                'klimaticky_region' => (int) $code[0],
+                'hlavni_pudni_jednotka' => (int) substr($code, 1, 2),
+                'sklonitost_expozice' => (int) $code[3],
+                'skeletovitost_hloubka' => (int) $code[4],
+                'vymera' => $area,
+                'podil' => $area !== null && $parcelArea > 0 ? round($area / $parcelArea * 100, 1) : null,
+            ];
+        }
+        return $result;
+    }
+
     /** @return list<array<string, mixed>> */
     private function buildings(int $ku, string $parcelId): array
     {
-        $statement = $this->pdo->prepare('SELECT * FROM stavebni_objekt WHERE ku_kod = :ku AND identifikacni_parcela = :parcel ORDER BY id');
-        $statement->execute(['ku' => $ku, 'parcel' => $parcelId]);
+        // VFR odkazuje na parcelu číselným ID bez prefixu `PA.`.
+        $statement = $this->pdo->prepare('SELECT * FROM stavebni_objekt WHERE identifikacni_parcela IN (:parcel, :numeric) ORDER BY id');
+        $statement->execute(['parcel' => $parcelId, 'numeric' => preg_replace('/^PA\./', '', $parcelId)]);
         $result = [];
         foreach ($statement as $row) {
             $address = $this->pdo->prepare(

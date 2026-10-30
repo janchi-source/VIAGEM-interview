@@ -57,3 +57,7 @@ fieldset legend { margin-bottom: 6px; }
   .sidebar { overflow: visible; padding: 12px; }
   .panel { margin-bottom: 10px; }
 }
+
+.detail-heading { margin: 14px 0 6px; font-size: .86rem; }
+.detail-items { margin: 0; padding-left: 18px; font-size: .85rem; }
+.bpej-note { margin: 6px 0 0; font-size: .75rem; }

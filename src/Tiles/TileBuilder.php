@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Viagem\Tiles;
 
 use PDO;
+use Viagem\Domain\ParcelNumber;
 use Viagem\Geo\GeometryCodec;
 use Viagem\Geo\TileMath;
 
@@ -13,7 +14,9 @@ final class TileBuilder
     private const EXTENT = 4096;
     private const BUFFER = 64;
     private const MAX_ZOOM = 15;
-    private const MIN_PIXELS = [10 => 0.0, 11 => 1.5, 12 => 1.0, 13 => 0.5];
+    // Prah v jednotkách extentu (16 = 1 px); pod z13 sa parcely nestavajú, mapu nesú hranice a názvy KÚ.
+    private const MIN_PARCEL_ZOOM = 13;
+    private const MIN_PIXELS = [13 => 16.0];
 
     public function __construct(private readonly PDO $pdo)
     {
@@ -30,7 +33,7 @@ final class TileBuilder
         [$ku, $kuLabel] = $this->buildKuLayers($z, $x, $y, $bounds);
         if ($ku !== '') $layers[] = $ku;
         if ($kuLabel !== '') $layers[] = $kuLabel;
-        if ($z >= 10) {
+        if ($z >= self::MIN_PARCEL_ZOOM) {
             [$parcels, $parcelLabels] = $this->buildParcelLayers($z, $x, $y, $bounds);
             if ($parcels !== '') $layers[] = $parcels;
             if ($parcelLabels !== '') $layers[] = $parcelLabels;
@@ -65,6 +68,7 @@ final class TileBuilder
         $tileBounds = TileMath::tileBounds($z, $x, $y);
         $statement = $this->pdo->prepare(
             'SELECT p.id, p.geom, p.druh_pozemku, p.vymera, p.label_lon, p.label_lat,
+                    p.kmenove_cislo, p.pododdeleni, p.druh_cislovani,
                     r.min_lon, r.min_lat, r.max_lon, r.max_lat
              FROM parcel_rtree r INNER JOIN parcel p ON p.rtree_id = r.id
              WHERE r.max_lon >= :min_lon AND r.min_lon <= :max_lon
@@ -88,7 +92,7 @@ final class TileBuilder
                 && (float) $row['label_lat'] <= $tileBounds['max_lat'];
             if ($z === self::MAX_ZOOM && $labelInTile) {
                 $point = $this->projectPoint((float) $row['label_lon'], (float) $row['label_lat'], $z, $x, $y);
-                $labels->addPoint($this->featureId((string) $row['id']), $point, ['cislo' => (string) $row['id']]);
+                $labels->addPoint($this->featureId((string) $row['id']), $point, ['cislo' => ParcelNumber::format((int) $row['kmenove_cislo'], $row['pododdeleni'] === null ? null : (int) $row['pododdeleni'], (int) $row['druh_cislovani'])]);
             }
         }
         return [$layer->encode(), $labels->encode()];
