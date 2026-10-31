@@ -1,3 +1,7 @@
 {
-  "outputDirectory": "public"
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://viagem-parcel-map.onrender.com/api/:path*" },
+    { "source": "/tiles/:path*", "destination": "https://viagem-parcel-map.onrender.com/tiles/:path*" }
+  ]
 }
