@@ -33,7 +33,7 @@ final class ParcelNumber
             return [
                 'kmenove' => (int) $matches[1],
                 'pododdeleni' => isset($matches[2]) ? (int) $matches[2] : null,
-                'druhCislovani' => 0,
+                'druhCislovani' => 2,
             ];
         }
 

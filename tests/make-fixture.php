@@ -13,7 +13,7 @@ for ($y = 0; $y < $size; $y++) {
         $right = $left + 0.00035;
         $top = $bottom + 0.00035;
         $hole = $id === 1 ? '<gml:interior><gml:LinearRing><gml:posList>' . ($left + .0001) . ' ' . ($bottom + .0001) . ' ' . ($right - .0001) . ' ' . ($bottom + .0001) . ' ' . ($right - .0001) . ' ' . ($top - .0001) . ' ' . ($left + .0001) . ' ' . ($top - .0001) . ' ' . ($left + .0001) . ' ' . ($bottom + .0001) . '</gml:posList></gml:LinearRing></gml:interior>' : '';
-        $features[] = '<Parcela gml:id="P' . $id . '"><KmenoveCislo>' . (100 + $id) . '</KmenoveCislo><DruhCislovani>0</DruhCislovani><DruhPozemku>orná pôda</DruhPozemku><Vymera>1400</Vymera><BPEJ><Kod>12345</Kod><Vymera>700</Vymera></BPEJ><BPEJ><Kod>54321</Kod><Vymera>700</Vymera></BPEJ><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>' . "$left $bottom $right $bottom $right $top $left $top $left $bottom" . '</gml:posList></gml:LinearRing></gml:exterior>' . $hole . '</gml:Polygon></Parcela>';
+        $features[] = '<Parcela gml:id="P' . $id . '"><KmenoveCislo>' . (100 + $id) . '</KmenoveCislo><DruhCislovani>2</DruhCislovani><DruhPozemku>orná pôda</DruhPozemku><Vymera>1400</Vymera><BPEJ><Kod>12345</Kod><Vymera>700</Vymera></BPEJ><BPEJ><Kod>54321</Kod><Vymera>700</Vymera></BPEJ><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>' . "$left $bottom $right $bottom $right $top $left $top $left $bottom" . '</gml:posList></gml:LinearRing></gml:exterior>' . $hole . '</gml:Polygon></Parcela>';
         $id++;
     }
 }
