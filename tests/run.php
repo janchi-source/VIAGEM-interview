@@ -102,6 +102,8 @@ $byTileId = json_decode($app->handle('GET', '/api/parcels/' . $tileId)->body, tr
 check(($byTileId['id'] ?? null) === 'P1' && str_ends_with((string) ($byTileId['odkaz'] ?? ''), 'id=P1'), 'App nájde parcelu podľa ID z dlaždice a odkaz nesie ID parcely');
 check($app->handle('GET', '/api/parcel/unknown')->status === 404, 'App vráti 404 pre neznámu parcelu');
 check($app->handle('GET', '/api/parcels/search', ['text' => '101'])->status === 200, 'App vyhľadá parcelu');
+$searchResult = json_decode($app->handle('GET', '/api/parcels/search', ['text' => '101'])->body, true);
+check(count($searchResult['items'] ?? []) >= 1, 'App nájde pozemkovú parcelu bez "st."');
 check($app->handle('GET', '/api/parcels/search')->status === 400, 'App odmietne neúplné vyhľadávanie');
 check($app->handle('POST', '/api/stats')->status === 405, 'App odmietne inú HTTP metódu');
 check($app->handle('GET', '/api/nope')->status === 404, 'App vráti 404 pre neznámu cestu');

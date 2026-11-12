@@ -18,11 +18,14 @@ Webová aplikace, která zobrazí katastrální parcely okresu Jičín na mapě.
 # 1. Stáhnout data z ČÚZK a naimportovat je do SQLite (celý okres)
 php bin/import.php
 
-# 2. Vygenerovat všechny dlaždice předem, aby byl první pohled na okres okamžitý
+# 2. (Volitelné) Předgenerovat dlaždice z9–z15 pro okolí Jičína, kam se mapa otevírá
+#    (134 dlaždic, asi minuta), aby byl první pohled okamžitý. Ostatní dlaždice se sestaví
+#    při prvním požadavku a uloží do cache. S --district se předgeneruje celý okres
+#    (asi 3 250 dlaždic, řádově desítky minut). Hotové dlaždice se přeskakují.
 php bin/warm-tiles.php
 
 # 3. Spustit server a otevřít http://localhost:8000
-php -S localhost:8000 -t public public/index.php
+PHP_CLI_SERVER_WORKERS=4 php -S localhost:8000 -t public public/index.php
 ```
 
 ## **Zdroje dat**
@@ -37,7 +40,7 @@ Podkladová mapa je Esri World Street Map. Volitelně jde zapnout ortofoto a kat
 
 ```
 bin/import.php              import z ČÚZK
-bin/warm-tiles.php          předgenerování dlaždic (paralelně přes pcntl_fork)
+bin/warm-tiles.php          předgenerování dlaždic do public/tiles
 public/index.php            vstupní bod webu
 public/index.html, assets/  frontend
 src/Import/                 stahování a čtení VFR, parsování GML
@@ -46,7 +49,6 @@ src/Tiles/                  generování MVT: protobuf, ořez, zjednodušení, c
 src/Domain/                 dotazy pro API, číselníky, parcelní čísla
 src/Http/                   router a odpovědi
 tests/                      testy + generátor syntetických VFR dat
-docs/PRUVODCE-KODEM.md      podrobný průchod kódem
 ```
 
 # Postup práce
